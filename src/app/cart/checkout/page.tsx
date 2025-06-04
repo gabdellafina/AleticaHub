@@ -1,7 +1,32 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FaHome, FaArrowLeft } from 'react-icons/fa';
+import { useEffect, useState } from 'react';
 
 export default function CheckoutPage() {
+  const [email, setEmail] = useState('');
+  const [erro, setErro] = useState('');
+  const router = useRouter();
+
+  const finalizarCompra = async () => {
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentEmail: email }),
+      });
+
+      if (!res.ok) throw new Error('Erro ao finalizar compra');
+      const data = await res.json();
+      router.push(`/payment?pedidoId=${data.id}`);
+    } catch (err) {
+      console.error(err);
+      setErro('Não foi possível finalizar a compra. Verifique seus dados.');
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
@@ -17,53 +42,24 @@ export default function CheckoutPage() {
         </Link>
         Finalizar Compra
       </h1>
-      
+
       <div className="bg-gray-900 p-6 rounded-lg shadow border border-gray-800">
-        <form className="space-y-4">
-          <div>
-            <label className="block mb-2 text-gray-300">Nome no Cartão</label>
-            <input 
-              type="text" 
-              className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white" 
-            />
-          </div>
-          
-          <div>
-            <label className="block mb-2 text-gray-300">Número do Cartão</label>
-            <input 
-              type="text" 
-              className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white" 
-              placeholder="0000 0000 0000 0000"
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-2 text-gray-300">Validade</label>
-              <input 
-                type="text" 
-                className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white" 
-                placeholder="MM/AA"
-              />
-            </div>
-            
-            <div>
-              <label className="block mb-2 text-gray-300">CVV</label>
-              <input 
-                type="text" 
-                className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white" 
-                placeholder="123"
-              />
-            </div>
-          </div>
-          
-          <button 
-            type="submit" 
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded font-bold mt-6"
-          >
-            Confirmar Pagamento
-          </button>
-        </form>
+        <label className="block text-gray-300 mb-2">E-mail do aluno</label>
+        <input
+          type="email"
+          className="w-full p-3 bg-gray-800 border border-gray-700 rounded text-white mb-4"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        {erro && <p className="text-red-500 mb-4">{erro}</p>}
+
+        <button
+          onClick={finalizarCompra}
+          className="w-full bg-red-700 hover:bg-red-600 text-white py-3 rounded font-bold"
+        >
+          Confirmar e Ir para Pagamento
+        </button>
       </div>
     </div>
   );
