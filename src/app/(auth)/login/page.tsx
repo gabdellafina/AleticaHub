@@ -3,30 +3,59 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '../../../../lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const auth = getAuth(app);
 
-  const [formData, setFormData] = useState({ email: '', senha: '' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { email, senha } = formData;
+    const { email, password } = formData;
 
     try {
-      await signInWithEmailAndPassword(auth, email, senha);
-      router.push('/home');
+      setIsLoading(true);
+      setError('');
+
+      // Login diretamente com a API de backend
+      const response = await fetch('http://localhost:3000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email, 
+          password
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro ao fazer login');
+      }
+
+      // 3. Processar a resposta
+      const data = await response.json();
+      
+      // 4. Armazenar o token JWT retornado pelo backend para futuras requisições
+      localStorage.setItem('authToken', data.token);
+
+      // 5. Redirecionar com base no papel do usuário
+      if (data.user.role === 'admin') {
+        router.push('/admin-dashboard');
+      } else {
+        router.push('/home');
+      }
     } catch (err) {
       console.error('Erro ao logar:', err);
-      setError('E-mail ou senha inválidos');
+      setError(err instanceof Error ? err.message : 'E-mail ou senha inválidos');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,6 +76,7 @@ export default function LoginPage() {
               value={formData.email}
               onChange={handleChange}
               required
+              disabled={isLoading}
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 text-white"
             />
           </div>
@@ -54,22 +84,25 @@ export default function LoginPage() {
           <div>
             <label className="block text-gray-300 mb-2">Senha</label>
             <input 
-              name="senha"
+              name="password"
               type="password"
-              value={formData.senha}
+              value={formData.password}
               onChange={handleChange}
               required
+              disabled={isLoading}
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 text-white"
             />
           </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm py-2 px-3 bg-red-900/30 rounded">{error}</p>}
           
           <button 
             type="submit" 
-            className="w-full bg-red-700 hover:bg-red-600 text-white py-3 px-4 rounded-md font-bold transition duration-300"
+            disabled={isLoading}
+            className={`w-full ${isLoading ? 'bg-gray-600' : 'bg-red-700 hover:bg-red-600'} 
+              text-white py-3 px-4 rounded-md font-bold transition duration-300`}
           >
-            ENTRAR
+            {isLoading ? 'ENTRANDO...' : 'ENTRAR'}
           </button>
         </form>
         
